@@ -1,34 +1,56 @@
-# plugin_generator.py
 import os
+from pathlib import Path
+from utils import save_file
 
-def create_plugin_skeleton(name, description, license_name, keywords):
+TEMPLATE_INFO = """[plugin]
+name={name}
+description={description}
+license={license}
+type=speechhandler
+version=0.0.1
+"""
+
+TEMPLATE_INIT = '''from naomi.plugin import SpeechHandlerPlugin
+
+class {class_name}(SpeechHandlerPlugin):
+    def intents(self):
+        return {intents_dict}
+
+    def handle(self, intent, mic):
+        mic.say(intent.get('text', ''))
+'''
+
+def create_plugin_skeleton(name, description, license_name, intent_data):
     folder = name.replace(" ", "_")
     os.makedirs(folder, exist_ok=True)
 
     # plugin.info
-    with open(os.path.join(folder, "plugin.info"), "w", encoding="utf-8") as f:
-        f.write(f"name={name}\n")
-        f.write(f"description={description}\n")
-        f.write(f"license={license_name}\n")
-        f.write(f"keywords={','.join(keywords)}\n")
+    info = TEMPLATE_INFO.format(name=name, description=description, license=license_name)
+    save_file(Path(folder) / "plugin.info", info)
 
-    # __init__.py
-    with open(os.path.join(folder, "__init__.py"), "w", encoding="utf-8") as f:
-        f.write("# Naomi speechhandler plugin\n")
+    # Build intents dict
+    intents = {}
+    for intent in intent_data:
+        intents[intent["intent_name"]] = {
+            "locale": {
+                "en-US": {
+                    "templates": intent["templates"],
+                    "keywords": intent["keywords"]
+                }
+            },
+            "action": "self.handle"
+        }
 
-    # Handler file
-    handler_filename = name.replace(" ", "") + "Handler.py"
-    with open(os.path.join(folder, handler_filename), "w", encoding="utf-8") as f:
-        f.write(f'''from naomi import plugin
+    # render __init__.py
+    class_name = name.replace(" ", "") + "Handler"
+    init_code = TEMPLATE_INIT.format(
+        class_name=class_name,
+        intents_dict=intents
+    )
+    save_file(Path(folder) / "__init__.py", init_code)
 
-class {name.replace(" ", "")}Handler(plugin.SpeechHandlerPlugin):
-    def intents(self):
-        return {{
-            "RepeatIntent": {{
-                "keywords": {keywords}
-            }}
-        }}
+    # README
+    readme = f"# {name}\n\n{description}\n"
+    save_file(Path(folder) / "README.md", readme)
 
-    def handle(self, text, intent):
-        self.say(text)
-''')
+    return folder
