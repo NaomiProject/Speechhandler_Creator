@@ -1,55 +1,51 @@
-import PySimpleGUI as sg
-from plugin_generator import generate_plugin
-from publisher import publish_plugin
+# gui.py
+import tkinter as tk
+from tkinter import messagebox, scrolledtext
+from plugin_generator import create_plugin_skeleton
 
-def start_gui():
-    sg.theme("DarkBlue3")
+def run():
+    root = tk.Tk()
+    root.title("Naomi Plugin Creator")
 
-    tab1_layout = [
-        [sg.Text("Plugin Name"), sg.Input(key="-NAME-")],
-        [sg.Text("Description"), sg.Input(key="-DESC-")],
-        [sg.Text("License"), sg.Input(key="-LICENSE-")],
-        [sg.Text("Keywords (comma-separated)"), sg.Input(key="-KEYWORDS-")],
-        [sg.Text("Templates (comma-separated)"), sg.Input(key="-TEMPLATES-")],
-        [sg.Text("Output Directory"), sg.Input(key="-OUTDIR-"), sg.FolderBrowse()],
-        [sg.Button("Generate Plugin")]
-    ]
+    # Title
+    tk.Label(root, text="Naomi Plugin Creator", font=("Helvetica", 16, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
 
-    tab2_layout = [
-        [sg.Text("Plugin Folder"), sg.Input(key="-PLUGINPATH-"), sg.FolderBrowse()],
-        [sg.Text("GitHub Username"), sg.Input(key="-GHUSER-")],
-        [sg.Text("GitHub Token"), sg.Input(key="-GHTOKEN-", password_char="*")],
-        [sg.Button("Publish Plugin")]
-    ]
+    # Plugin Name
+    tk.Label(root, text="Plugin Name").grid(row=1, column=0, sticky="w")
+    entry_name = tk.Entry(root, width=40)
+    entry_name.grid(row=1, column=1, pady=2)
 
-    layout = [[sg.TabGroup([
-        [sg.Tab("Create Plugin", tab1_layout), sg.Tab("Publish Plugin", tab2_layout)]
-    ])]]
+    # Description
+    tk.Label(root, text="Description").grid(row=2, column=0, sticky="nw")
+    text_desc = scrolledtext.ScrolledText(root, width=30, height=4)
+    text_desc.grid(row=2, column=1, pady=2)
 
-    window = sg.Window("Naomi Plugin Tool", layout)
+    # License
+    tk.Label(root, text="License").grid(row=3, column=0, sticky="w")
+    entry_license = tk.Entry(root, width=40)
+    entry_license.insert(0, "MIT")
+    entry_license.grid(row=3, column=1, pady=2)
 
-    while True:
-        event, values = window.read()
-        if event in (sg.WINDOW_CLOSED, "Exit"):
-            break
+    # Keywords
+    tk.Label(root, text="Intent Keywords (comma-separated)").grid(row=4, column=0, sticky="w")
+    entry_keywords = tk.Entry(root, width=40)
+    entry_keywords.grid(row=4, column=1, pady=2)
 
-        if event == "Generate Plugin":
-            path = generate_plugin(
-                values["-NAME-"],
-                values["-DESC-"],
-                values["-LICENSE-"],
-                values["-KEYWORDS-"].split(","),
-                values["-TEMPLATES-"].split(","),
-                values["-OUTDIR-"]
-            )
-            sg.popup("Plugin created!", f"Path: {path}")
+    # Actions
+    def on_create():
+        name = entry_name.get().strip()
+        description = text_desc.get("1.0", tk.END).strip()
+        license_name = entry_license.get().strip()
+        keywords = [kw.strip() for kw in entry_keywords.get().split(",") if kw.strip()]
 
-        if event == "Publish Plugin":
-            url = publish_plugin(
-                values["-PLUGINPATH-"],
-                values["-GHUSER-"],
-                values["-GHTOKEN-"]
-            )
-            sg.popup("Plugin published!", f"Pull Request URL: {url}")
+        if not name:
+            messagebox.showerror("Error", "Plugin name is required.")
+            return
 
-    window.close()
+        create_plugin_skeleton(name, description, license_name, keywords)
+        messagebox.showinfo("Success", f"Plugin '{name}' created successfully!")
+
+    tk.Button(root, text="Create Plugin", command=on_create).grid(row=5, column=0, pady=10)
+    tk.Button(root, text="Exit", command=root.destroy).grid(row=5, column=1, pady=10)
+
+    root.mainloop()
