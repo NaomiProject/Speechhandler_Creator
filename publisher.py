@@ -5,14 +5,17 @@ import subprocess
 from github import Github
 from storage import read_plugin_info, write_plugin_info
 
+
 def run(cmd, cwd=None):
     p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{p.stderr}")
     return p.stdout.strip()
 
+
 def _safe_branch(s: str) -> str:
     return "".join(ch.lower() if ch.isalnum() else "-" for ch in s).strip("-") or "add-plugin"
+
 
 def _ensure_remote(cwd, name, url):
     try:
@@ -20,6 +23,7 @@ def _ensure_remote(cwd, name, url):
         run(["git", "remote", "set-url", name, url], cwd=cwd)
     except RuntimeError:
         run(["git", "remote", "add", name, url], cwd=cwd)
+
 
 def _ensure_fork(token, username):
     """Ensure user has a fork of NaomiProject/naomi-plugins. Returns clone SSH URL."""
@@ -42,6 +46,7 @@ def _ensure_fork(token, username):
             raise RuntimeError("Timed out waiting for fork creation.")
     return fork.ssh_url
 
+
 def _ensure_plugin_repo(plugin_folder, token, username):
     """
     Make sure the plugin folder is a git repo, remote points to user's GitHub,
@@ -50,12 +55,12 @@ def _ensure_plugin_repo(plugin_folder, token, username):
     Returns (plugin_name, repo_ssh_url, license, latest_commit_sha)
     """
     cfg, info_path = read_plugin_info(plugin_folder)
-    name = cfg["plugin"].get("name", "").strip()
-    license_text = cfg["plugin"].get("license", "MIT").strip()
-    repo_url = cfg["plugin"].get("repo_url", "").strip()
+    name = cfg["plugin"].get("Name", "").strip()
+    license_text = cfg["plugin"].get("License", "MIT").strip()
+    repo_url = cfg["plugin"].get("URL", "").strip()
 
     if not name:
-        raise RuntimeError("plugin.info missing 'name'.")
+        raise RuntimeError("plugin.info missing 'Name'.")
 
     g = Github(token)
     user = g.get_user()
@@ -110,6 +115,7 @@ def _ensure_plugin_repo(plugin_folder, token, username):
     sha = branch.commit.sha
     return name, repo_url, license_text, sha
 
+
 def _ensure_local_plugins_index(username, token):
     """Clone or update user's fork of naomi-plugins into ./naomi-plugins and sync upstream."""
     target_dir = "naomi-plugins"
@@ -135,6 +141,7 @@ def _ensure_local_plugins_index(username, token):
     run(["git", "merge", f"upstream/{default_branch}"], cwd=cwd)
 
     return cwd, default_branch
+
 
 def publish_plugin_folder(plugin_folder, github_token, github_username):
     """
@@ -169,7 +176,8 @@ def publish_plugin_folder(plugin_folder, github_token, github_username):
     )
     return pr.html_url
 
-def read_plugin_info(folder):
+
+def _read_plugin_info(folder):
     cfg, _ = read_plugin_info(folder)
     return {
         "name": cfg["plugin"].get("name", ""),

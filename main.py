@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
 # main.py
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from plugin_editor.py import PluginEditor
-from publisher import publish_plugin_folder, read_plugin_info
+from plugin_editor import PluginEditor
+from publisher import publish_plugin_folder, _read_plugin_info
+import logging
 
 
 class App(tk.Tk):
@@ -10,6 +12,7 @@ class App(tk.Tk):
         super().__init__()
         self.title("Naomi Plugin Tool")
         self.geometry("980x720")
+        self._logger = logging.getLogger(__name__)
 
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True)
@@ -76,12 +79,13 @@ class App(tk.Tk):
         self.plugin_folder.insert(0, folder)
 
         try:
-            info = read_plugin_info(folder)
+            info = _read_plugin_info(folder)
             self.name_val.delete(0, "end"); self.name_val.insert(0, info.get("name", ""))
             self.repo_val.delete(0, "end"); self.repo_val.insert(0, info.get("repo_url", ""))
             self.license_val.delete(0, "end"); self.license_val.insert(0, info.get("license", ""))
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read plugin.info: {e}")
+            self._logger.error(f"Failed to read plugin.info: {e}", exc_info=True)
 
     def _do_publish(self):
         folder = self.plugin_folder.get().strip()

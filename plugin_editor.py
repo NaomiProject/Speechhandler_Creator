@@ -4,7 +4,27 @@ from tkinter import ttk, messagebox, simpledialog, scrolledtext
 import re
 from plugin_generator import create_plugin_skeleton
 
+
 PLACEHOLDER_RE = re.compile(r"{([A-Za-z_][A-Za-z0-9_]*)}")
+
+
+class CustomAskString(simpledialog.Dialog):
+    def __init__(self, parent, title, prompt, default=""):
+        self.prompt = prompt
+        self.default = default
+        self.result = None
+        super().__init__(parent, title)
+
+    def body(self, master):
+        tk.Label(master, text=self.prompt).pack(pady=5)
+        self.entry = tk.Entry(master, bg="white")
+        self.entry.pack(pady=5)
+        return self.entry  # Set initial focus
+
+    def apply(self):
+        """Process the data when OK is clicked."""
+        self.result = self.entry.get()
+
 
 class LocaleEditor(tk.Toplevel):
     """Edit one locale: keywords (dict[str, list[str]]) and templates (list[str])."""
@@ -57,14 +77,16 @@ class LocaleEditor(tk.Toplevel):
             self.tm_list.insert(tk.END, t)
 
     def add_kw(self):
-        name = simpledialog.askstring("Keyword Category", "Category name, e.g. DayKeyword:", parent=self)
+        dialog = CustomAskString(self, "Keyword Category", "Category name, e.g. DayKeyword:")
+        name = dialog.result
         if not name:
             return
         if name in self.keywords:
             from tkinter import messagebox
             messagebox.showerror("Exists", "That category already exists.", parent=self)
             return
-        phrases = simpledialog.askstring("Phrases", "Comma-separated phrases:", parent=self) or ""
+        dialog = CustomAskString(self, "Phrases", "Comma-separated phrases:")
+        phrases = dialog.result
         vals = [p.strip() for p in phrases.split(",") if p.strip()]
         self.keywords[name] = vals
         self.refresh()
@@ -73,10 +95,12 @@ class LocaleEditor(tk.Toplevel):
         sel = self.kw_list.curselection()
         if not sel: return
         key = sorted(self.keywords.keys())[sel[0]]
-        new_name = simpledialog.askstring("Rename", "New category name:", initialvalue=key, parent=self)
-        if not new_name: return
-        phrases = simpledialog.askstring("Phrases", "Edit comma-separated phrases:",
-                                         initialvalue=", ".join(self.keywords[key]), parent=self) or ""
+        dialog = CustomAskString(self, "Rename", "New category name:", default=key)
+        new_name = dialog.result
+        if not new_name:
+            return
+        dialog = CustomAskString(self, "Phrases", "Edit comma-separated phrases:", default=", ".join(self.keywords[key]))
+        phrases = dialog.result
         vals = [p.strip() for p in phrases.split(",") if p.strip()]
         if new_name != key and new_name in self.keywords:
             from tkinter import messagebox
@@ -91,7 +115,8 @@ class LocaleEditor(tk.Toplevel):
 
     def del_kw(self):
         sel = self.kw_list.curselection()
-        if not sel: return
+        if not sel:
+            return
         key = sorted(self.keywords.keys())[sel[0]]
         # warn if templates reference {key}
         used = [t for t in self.templates if f"{{{key}}}" in t]
@@ -103,22 +128,29 @@ class LocaleEditor(tk.Toplevel):
         self.refresh()
 
     def add_tm(self):
-        t = simpledialog.askstring("Template", "Template text:", parent=self)
-        if not t: return
+        dialog = CustomAskString(self, "Template", "Template text:")
+        t = dialog.result
+        if not t:
+            return
         self.templates.append(t.strip()); self.refresh()
 
     def edit_tm(self):
         sel = self.tm_list.curselection()
         if not sel: return
         idx = sel[0]; t = self.templates[idx]
-        nt = simpledialog.askstring("Template", "Edit template:", initialvalue=t, parent=self)
-        if not nt: return
-        self.templates[idx] = nt.strip(); self.refresh()
+        dialog = CustomAskString(self, "Template", "Edit template:", initialvalue=t)
+        nt = dialog.result
+        if not nt:
+            return
+        self.templates[idx] = nt.strip()
+        self.refresh()
 
     def del_tm(self):
         sel = self.tm_list.curselection()
-        if not sel: return
-        del self.templates[sel[0]]; self.refresh()
+        if not sel:
+            return
+        del self.templates[sel[0]]
+        self.refresh()
 
     def on_save(self):
         # Validate placeholders exist as keyword categories
@@ -130,9 +162,11 @@ class LocaleEditor(tk.Toplevel):
                     missing.add(ph)
         if missing:
             from tkinter import messagebox
-            messagebox.showerror("Missing categories",
-                                 "Placeholders missing keyword categories:\n" + ", ".join(sorted(missing)),
-                                 parent=self)
+            messagebox.showerror(
+                "Missing categories",
+                "Placeholders missing keyword categories:\n" + ", ".join(sorted(missing)),
+                parent=self
+            )
             return
         self.result = {"keywords": self.keywords, "templates": self.templates}
         self.destroy()
@@ -179,8 +213,10 @@ class IntentEditor(tk.Toplevel):
             self.loc_list.insert(tk.END, f"{code}    cats: [{cats}]    templates: {tcount}")
 
     def add_locale(self):
-        code = simpledialog.askstring("Locale Code", "e.g., en-US, fr-FR:", parent=self)
-        if not code: return
+        dialog = CustomAskString(self, "Locale Code", "e.g., en-US, fr-FR:")
+        code = dialog.result
+        if not code:
+            return
         if code in self.locales:
             messagebox.showerror("Exists", "Locale already exists.", parent=self); return
         dlg = LocaleEditor(self, initial={"keywords": {}, "templates": []}, locale_code=code)
@@ -233,7 +269,7 @@ class PluginEditor(ttk.Frame):
 
         row += 1
         ttk.Label(self, text="Description").grid(row=row, column=0, padx=10, pady=2, sticky="nw")
-        self.txt_desc = scrolledtext.ScrolledText(self, width=56, height=6)
+        self.txt_desc = scrolledtext.ScrolledText(self, bg="white", width=56, height=6)
         self.txt_desc.grid(row=row, column=1, padx=10, pady=2, sticky="w")
 
         row += 1

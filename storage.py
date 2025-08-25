@@ -8,7 +8,7 @@ def read_plugin_info(folder):
         raise FileNotFoundError("plugin.info not found")
     cfg = configparser.ConfigParser()
     cfg.read(path)
-    if "plugin" not in cfg:
+    if "Plugin" not in cfg:
         raise ValueError("Missing [plugin] section")
     return cfg, path
 
